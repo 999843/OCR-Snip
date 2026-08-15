@@ -1,19 +1,34 @@
 #!/bin/bash
 # 构建 OCR Snip.app。只依赖 Command Line Tools，不需要完整 Xcode。
+# 用法: ./build.sh [--universal]
+#   默认只编译当前架构（本机开发快）；--universal 出 arm64 + x86_64 胖二进制（发布用）。
 set -euo pipefail
 cd "$(dirname "$0")"
 
 APP="build/OCR Snip.app"
 MACOS="$APP/Contents/MacOS"
+DEPLOY_TARGET="macosx13.0"
 
 rm -rf "$APP"
 mkdir -p "$MACOS" "$APP/Contents/Resources"
 
-swiftc -O \
-	-target "$(uname -m)-apple-macosx13.0" \
-	Sources/*.swift \
-	-o "$MACOS/OCRSnip" \
-	-framework AppKit -framework Vision -framework Carbon
+compile() { # $1=arch $2=输出路径
+	swiftc -O \
+		-target "$1-apple-$DEPLOY_TARGET" \
+		Sources/*.swift \
+		-o "$2" \
+		-framework AppKit -framework Vision -framework Carbon
+}
+
+if [ "${1:-}" = "--universal" ]; then
+	compile arm64 "$MACOS/OCRSnip-arm64"
+	compile x86_64 "$MACOS/OCRSnip-x86_64"
+	lipo -create -output "$MACOS/OCRSnip" "$MACOS/OCRSnip-arm64" "$MACOS/OCRSnip-x86_64"
+	rm "$MACOS/OCRSnip-arm64" "$MACOS/OCRSnip-x86_64"
+	echo "📦 universal: $(lipo -archs "$MACOS/OCRSnip")"
+else
+	compile "$(uname -m)" "$MACOS/OCRSnip"
+fi
 
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 
