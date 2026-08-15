@@ -40,10 +40,12 @@ final class ResultWindow: NSObject, NSWindowDelegate {
         let hint = label("确认无误后复制，也可以直接在下面改：", secondary: true)
         let scrollView = buildTextArea()
         let count = label("", secondary: true)
+        let merge = button(title: "合并段落", key: "", action: #selector(mergeParagraphs))
+        merge.toolTip = "把被 OCR 按视觉行切断的文字接回段落，⌘Z 可撤销"
         let cancel = button(title: "取消", key: "\u{1b}", action: #selector(dismiss))
         let copy = button(title: "复制", key: "\r", action: #selector(copyAndClose))
 
-        for view in [hint, scrollView, count, cancel, copy] {
+        for view in [hint, scrollView, merge, count, cancel, copy] {
             view.translatesAutoresizingMaskIntoConstraints = false
             content.addSubview(view)
         }
@@ -57,7 +59,10 @@ final class ResultWindow: NSObject, NSWindowDelegate {
             scrollView.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -16),
             scrollView.bottomAnchor.constraint(equalTo: copy.topAnchor, constant: -12),
 
-            count.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 16),
+            merge.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 16),
+            merge.centerYAnchor.constraint(equalTo: copy.centerYAnchor),
+
+            count.leadingAnchor.constraint(equalTo: merge.trailingAnchor, constant: 10),
             count.centerYAnchor.constraint(equalTo: copy.centerYAnchor),
 
             copy.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -16),
@@ -82,6 +87,7 @@ final class ResultWindow: NSObject, NSWindowDelegate {
         guard let textView = scrollView.documentView as? NSTextView else { return scrollView }
         textView.isEditable = true
         textView.isRichText = false
+        textView.allowsUndo = true // 默认 false，不开的话手工编辑和「合并段落」都无法 ⌘Z
         textView.font = .systemFont(ofSize: 13)
         textView.textContainerInset = NSSize(width: 6, height: 8)
         textView.delegate = self
@@ -105,6 +111,19 @@ final class ResultWindow: NSObject, NSWindowDelegate {
     }
 
     // MARK: - 动作
+
+    @objc private func mergeParagraphs() {
+        guard let textView else { return }
+        let merged = TextCleanup.mergeParagraphs(textView.string)
+        guard merged != textView.string else { return }
+
+        // 经 shouldChangeText/didChangeText 改写，⌘Z 才能撤销回原始识别结果
+        let whole = NSRange(location: 0, length: (textView.string as NSString).length)
+        guard textView.shouldChangeText(in: whole, replacementString: merged) else { return }
+        textView.textStorage?.replaceCharacters(in: whole, with: merged)
+        textView.didChangeText()
+        updateCount()
+    }
 
     @objc private func copyAndClose() {
         guard let text = textView?.string, !text.isEmpty else { return }
