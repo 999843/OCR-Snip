@@ -1,5 +1,9 @@
 # OCR Snip
 
+> **仅 macOS 13+**（Apple Silicon / Intel）。实现依赖 Vision、AppKit、Carbon 等 Apple 专有框架，
+> Windows / Linux 无法运行，也没有移植计划。
+> Windows 上请用微软官方免费的 **PowerToys → Text Extractor**，功能等价。
+
 给 macOS 补一个「截图取字」快捷键。框选屏幕任意区域 → Vision 识别 → 确认窗里看一眼 → 复制。
 
 截图、标注、贴图这些交给 Snipaste，这里只做它没有的那一件事，两者互不干扰。
@@ -109,4 +113,4 @@ Sources/
 
 ## License
 
-MIT
+[MIT](LICENSE)
