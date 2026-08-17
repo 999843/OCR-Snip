@@ -13,6 +13,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 生成变更日志要读到历史 tag
 
       - name: 构建 universal app
         run: ./build.sh --universal
@@ -20,19 +22,34 @@ jobs:
       - name: 打包
         run: |
           ditto -c -k --keepParent "build/OCR Snip.app" "OCR-Snip.zip"
-          echo "SHA256: $(shasum -a 256 OCR-Snip.zip | cut -d' ' -f1)"
+          shasum -a 256 OCR-Snip.zip > OCR-Snip.zip.sha256
+          cat OCR-Snip.zip.sha256
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
           name: OCR-Snip
-          path: OCR-Snip.zip
+          path: |
+            OCR-Snip.zip
+            OCR-Snip.zip.sha256
+
+      - name: 拼接 release notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cp .github/release-notes.md notes.md
+          # release-notes.md 只放不随版本变的安装/用法说明，本次改了什么由 commit 现生成
+          if prev=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^"); then
+            printf '\n## 本次更新（%s → %s）\n\n' "$prev" "$GITHUB_REF_NAME" >> notes.md
+            git log --no-merges --pretty='- %s' "$prev..$GITHUB_REF_NAME" >> notes.md
+          else
+            echo "没找到上一个 tag，当作首个版本，跳过变更日志"
+          fi
 
       - name: 发布 Release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" OCR-Snip.zip \
+          gh release create "$GITHUB_REF_NAME" OCR-Snip.zip OCR-Snip.zip.sha256 \
             --title "OCR Snip $GITHUB_REF_NAME" \
-            --notes-file .github/release-notes.md
+            --notes-file notes.md
