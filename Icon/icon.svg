@@ -1,0 +1,27 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- OCR Snip 应用图标。语义与菜单栏的 text.viewfinder 一致：取景框 + 文字行。
+       画布 1024，内容区 824 居中（macOS 图标惯例留白），圆角按 Big Sur 比例。 -->
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#12BFB5"/>
+      <stop offset="1" stop-color="#0A6FC2"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#background)"/>
+
+  <!-- 取景框四角 -->
+  <g stroke="#FFFFFF" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M292 432 L292 342 L382 342"/>
+    <path d="M642 342 L732 342 L732 432"/>
+    <path d="M732 592 L732 682 L642 682"/>
+    <path d="M382 682 L292 682 L292 592"/>
+  </g>
+
+  <!-- 被识别出的文字行。只用两行并拉开间距：三行在 32×32 下会糊成一个块，
+       行距缩到不足 2px，抗锯齿必然把它抹平。 -->
+  <g stroke="#FFFFFF" stroke-width="46" stroke-linecap="round">
+    <path d="M382 468 L642 468"/>
+    <path d="M382 556 L572 556"/>
+  </g>
+</svg>

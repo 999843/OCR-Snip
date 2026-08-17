@@ -94,6 +94,7 @@ git tag v0.3.0 && git push origin v0.3.0
 | 快捷键 | 菜单栏 → 设置…（**不用改代码**） |
 | 默认快捷键 | `Sources/HotKeyConfig.swift` 的 `fallback` |
 | 识别语言 | `Sources/TextRecognizer.swift` 的 `defaultLanguages` |
+| 应用图标 | `Icon/icon.svg`，`./build.sh` 检测到改动会自动重新生成 icns |
 
 ## 结构
 
@@ -109,6 +110,10 @@ Sources/
 ├── TextRecognizer.swift       Vision OCR
 ├── TextCleanup.swift          段落合并
 └── ResultWindow.swift         确认窗
+
+Icon/
+├── icon.svg                   图标源文件，改这个
+└── make-icon.swift            SVG → icns，用 NSImage 光栅化，无外部依赖
 ```
 
 ## License

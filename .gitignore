@@ -1,2 +1,6 @@
 build/
 .DS_Store
+
+# 图标生成物，由 build.sh 从 Icon/icon.svg 生成
+Icon/AppIcon.icns
+Icon/*.iconset

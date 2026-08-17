@@ -32,6 +32,12 @@ fi
 
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 
+# 图标：icns 是生成物（不进版本库），SVG 有改动时重新生成
+if [ ! -f Icon/AppIcon.icns ] || [ Icon/icon.svg -nt Icon/AppIcon.icns ]; then
+	swift Icon/make-icon.swift Icon/icon.svg Icon/AppIcon.icns
+fi
+cp Icon/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+
 # TCC 对 ad-hoc 签名按 cdhash 认人，每次重建都算「新 App」，屏幕录制权限随之失效。
 # 用一张自签名证书就能让签名身份稳定下来，跨重建保留授权。见 README。
 SIGN_ID="${OCRSNIP_SIGN_ID:-OCR Snip Signing}"
