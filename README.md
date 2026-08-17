@@ -8,21 +8,36 @@
 - **无依赖**：框选复用系统 `screencapture -i`，不自绘覆盖层
 - **常驻菜单栏**：不占 Dock
 
+## 下载
+
+👉 [**最新版本**](https://github.com/999843/OCR-Snip/releases/latest) — universal（Apple Silicon + Intel），需要 macOS 13+
+
+解压后把 `OCR Snip.app` 拖进「应用程序」，然后**在终端执行一次**：
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/OCR Snip.app"
+```
+
+这一步不能省：本 App 未经 Apple 公证（公证要 99 美元/年的开发者账号，自用工具不值当），
+从浏览器下载的文件带 quarantine 标记，不解除会被 macOS 拦成「已损坏」。
+
+之后打开 App、按 `⌃⇧T`，按提示授权屏幕录制，再退出重开一次即可。
+
 ## 构建
 
 只需要 Command Line Tools，不需要完整 Xcode：
 
 ```bash
 ./build.sh              # 当前架构
-./build.sh --universal  # arm64 + x86_64 胖二进制，要拷给别人时用
+./build.sh --universal  # arm64 + x86_64 胖二进制
 ```
 
 产物在 `build/OCR Snip.app`，拖进 `/Applications` 即可。
 
-拷给别人时，对方需要先解除隔离标记（本 App 未经 Apple 公证）：
+打 tag 会触发 GitHub Actions 自动构建并发布 Release：
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/OCR Snip.app"
+git tag v0.2.0 && git push origin v0.2.0
 ```
 
 ## 使用
