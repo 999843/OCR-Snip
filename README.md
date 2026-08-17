@@ -37,18 +37,28 @@ xattr -dr com.apple.quarantine "/Applications/OCR Snip.app"
 打 tag 会触发 GitHub Actions 自动构建并发布 Release：
 
 ```bash
-git tag v0.2.0 && git push origin v0.2.0
+git tag v0.3.0 && git push origin v0.3.0
 ```
 
 ## 使用
 
-按 **⌃⇧T** → 框选 → 结果窗弹出。
+按 **⌃⇧T**（默认，可在设置里改）→ 框选 → 结果窗弹出。
 
 - 结果**可直接编辑**，改掉误识别再复制
 - **「合并段落」**：OCR 是按图像上的视觉行返回的，一段话会被切成好几行。点一下接回段落，`⌘Z` 可撤销。
   刻意做成手动按钮而不是自动执行——代码块、列表、表格需要保留换行，自动猜必然猜错
 - `Enter` 复制并关闭，`Esc` 取消
 - 也可以点菜单栏图标手动触发
+
+## 设置
+
+菜单栏图标 → **设置…**（或 `⌘,`）。目前只有快捷键这一项。
+
+点一下方框，按下想用的组合，立即生效并记住。三条规则：
+
+- **必须包含 `⌃` `⌥` `⌘` 中至少一个**。只有 `⇧` 或纯字母会把正常打字也一起拦下来，会被拒绝（响一声）
+- 录制中按 `Esc` 取消
+- 组合被别的 App 占用时会提示，并**自动退回原来那个** —— 不会让你落到没有快捷键可用的状态
 
 ## 首次运行
 
@@ -77,19 +87,24 @@ git tag v0.2.0 && git push origin v0.2.0
 
 | 想改什么 | 改哪里 |
 |---|---|
-| 快捷键 | `Sources/AppDelegate.swift` 顶部的 `hotKeyCode` / `hotKeyModifiers` |
+| 快捷键 | 菜单栏 → 设置…（**不用改代码**） |
+| 默认快捷键 | `Sources/HotKeyConfig.swift` 的 `fallback` |
 | 识别语言 | `Sources/TextRecognizer.swift` 的 `defaultLanguages` |
 
 ## 结构
 
 ```
 Sources/
-├── main.swift            入口
-├── AppDelegate.swift     菜单栏 + 快捷键 + 流程编排
-├── HotKey.swift          Carbon 全局热键（不需要辅助功能权限）
-├── ScreenCapture.swift   调用 screencapture -i
-├── TextRecognizer.swift  Vision OCR
-└── ResultWindow.swift    确认窗
+├── main.swift                 入口
+├── AppDelegate.swift          菜单栏 + 快捷键注册 + 流程编排
+├── HotKey.swift               Carbon 全局热键（不需要辅助功能权限）
+├── HotKeyConfig.swift         快捷键模型 + UserDefaults 持久化
+├── ShortcutRecorderView.swift 快捷键录制控件
+├── SettingsWindow.swift       设置窗口
+├── ScreenCapture.swift        调用 screencapture -i
+├── TextRecognizer.swift       Vision OCR
+├── TextCleanup.swift          段落合并
+└── ResultWindow.swift         确认窗
 ```
 
 ## License

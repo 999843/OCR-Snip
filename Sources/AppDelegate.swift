@@ -1,27 +1,24 @@
 import AppKit
-import Carbon.HIToolbox
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// 默认 ⌃⇧T，避开 Snipaste 的 F1。改这里即可换键。
-    private static let hotKeyCode = UInt32(kVK_ANSI_T)
-    private static let hotKeyModifiers = UInt32(controlKey | shiftKey)
-    private static let hotKeyLabel = "⌃⇧T"
-
     private var statusItem: NSStatusItem?
     private var hotKey: HotKey?
+    private var hotKeyConfig = HotKeyStore.load()
+    private var hotKeyMenuItem: NSMenuItem?
+
     private let resultWindow = ResultWindow()
+    private let settingsWindow = SettingsWindow()
     private var isCapturing = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         buildStatusItem()
+        wireSettings()
 
-        hotKey = HotKey(
-            keyCode: Self.hotKeyCode,
-            modifiers: Self.hotKeyModifiers,
-            action: { [weak self] in self?.startCapture() }
-        )
-        if hotKey == nil {
-            alert("快捷键 \(Self.hotKeyLabel) 注册失败", info: "可能已被其他 App 占用。仍可从菜单栏图标手动触发。")
+        if !registerHotKey(hotKeyConfig) {
+            alert(
+                "快捷键 \(hotKeyConfig.displayName) 注册失败",
+                info: "可能已被其他 App 占用。可以从菜单栏「设置…」换一个，或直接点菜单栏图标触发。"
+            )
         }
     }
 
@@ -39,7 +36,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         capture.target = self
         menu.addItem(capture)
-        menu.addItem(NSMenuItem(title: "快捷键 \(Self.hotKeyLabel)", action: nil, keyEquivalent: ""))
+
+        let hotKeyItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        hotKeyItem.isEnabled = false
+        menu.addItem(hotKeyItem)
+        hotKeyMenuItem = hotKeyItem
+        updateHotKeyMenuItem()
+
+        menu.addItem(.separator())
+        let settings = NSMenuItem(title: "设置…", action: #selector(openSettings), keyEquivalent: ",")
+        settings.target = self
+        menu.addItem(settings)
         menu.addItem(.separator())
         menu.addItem(
             NSMenuItem(title: "退出", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -47,6 +54,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         item.menu = menu
         statusItem = item
+    }
+
+    private func updateHotKeyMenuItem() {
+        hotKeyMenuItem?.title = "快捷键 \(hotKeyConfig.displayName)"
+    }
+
+    // MARK: - 快捷键
+
+    private func wireSettings() {
+        settingsWindow.onChange = { [weak self] in self?.apply($0) }
+        settingsWindow.onRecordingChange = { [weak self] isRecording in
+            // 录制期间必须注销：否则按下当前快捷键会直接触发截图，新组合永远录不进来
+            if isRecording {
+                self?.hotKey = nil
+            } else {
+                self?.restoreHotKeyIfNeeded()
+            }
+        }
+    }
+
+    private func apply(_ config: HotKeyConfig) {
+        let previous = hotKeyConfig
+        guard config != previous else {
+            restoreHotKeyIfNeeded()
+            return
+        }
+
+        guard registerHotKey(config) else {
+            _ = registerHotKey(previous) // 注册不上就退回原来那个，不能让用户失去快捷键
+            settingsWindow.revert(to: previous)
+            alert("\(config.displayName) 无法注册", info: "这个组合可能已被系统或其他 App 占用，换一个试试。")
+            return
+        }
+
+        hotKeyConfig = config
+        HotKeyStore.save(config)
+        updateHotKeyMenuItem()
+    }
+
+    /// 先释放旧的再注册，否则注册同一组合必然失败
+    private func registerHotKey(_ config: HotKeyConfig) -> Bool {
+        hotKey = nil
+        hotKey = HotKey(keyCode: config.keyCode, modifiers: config.modifiers) { [weak self] in
+            self?.startCapture()
+        }
+        return hotKey != nil
+    }
+
+    private func restoreHotKeyIfNeeded() {
+        guard hotKey == nil else { return }
+        _ = registerHotKey(hotKeyConfig)
+    }
+
+    @objc private func openSettings() {
+        settingsWindow.show(current: hotKeyConfig)
     }
 
     // MARK: - 主流程
