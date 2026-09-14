@@ -64,6 +64,13 @@ final class ShortcutRecorderView: NSView {
         onCapture?(captured)
     }
 
+    /// 外部收尾：窗口关闭时 view 不会主动交出 first responder，
+    /// 录制态就一直挂着，外部为录制而注销的全局热键也永远恢复不了。
+    func cancelRecording() {
+        guard isRecording else { return }
+        endRecording()
+    }
+
     private func endRecording() {
         setRecording(false)
         window?.makeFirstResponder(nil)

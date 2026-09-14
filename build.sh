@@ -17,7 +17,7 @@ compile() { # $1=arch $2=输出路径
 		-target "$1-apple-$DEPLOY_TARGET" \
 		Sources/*.swift \
 		-o "$2" \
-		-framework AppKit -framework Vision -framework Carbon
+		-framework AppKit -framework Vision -framework Carbon -framework ServiceManagement
 }
 
 if [ "${1:-}" = "--universal" ]; then

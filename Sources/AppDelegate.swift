@@ -64,6 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func wireSettings() {
         settingsWindow.onChange = { [weak self] in self?.apply($0) }
+        settingsWindow.onToggleLaunchAtLogin = { [weak self] in self?.applyLaunchAtLogin($0) }
         settingsWindow.onRecordingChange = { [weak self] isRecording in
             // 录制期间必须注销：否则按下当前快捷键会直接触发截图，新组合永远录不进来
             if isRecording {
@@ -108,7 +109,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openSettings() {
-        settingsWindow.show(current: hotKeyConfig)
+        // 登录项状态每次现读，用户可能刚在系统设置里改过
+        settingsWindow.show(hotKey: hotKeyConfig, launchAtLogin: LoginItem.isEnabled)
+    }
+
+    // MARK: - 开机启动
+
+    private func applyLaunchAtLogin(_ enabled: Bool) {
+        do {
+            try LoginItem.setEnabled(enabled)
+        } catch {
+            settingsWindow.setLaunchAtLogin(LoginItem.isEnabled) // 拨回系统里的真实状态
+            alert(
+                enabled ? "无法开启开机启动" : "无法关闭开机启动",
+                info: error.localizedDescription
+            )
+            return
+        }
+
+        settingsWindow.setLaunchAtLogin(LoginItem.isEnabled)
+        if enabled, LoginItem.state == .needsApproval { promptLoginItemApproval() }
+    }
+
+    /// 登记成功但系统要用户亲自批准——多半是以前在系统设置里禁用过这个 App
+    private func promptLoginItemApproval() {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "还需要在系统设置里批准"
+        alert.informativeText = "OCR Snip 已登记为登录项，但系统要你亲自批准之后才会真正开机启动。"
+        alert.addButton(withTitle: "打开登录项设置")
+        alert.addButton(withTitle: "稍后")
+        if alert.runModal() == .alertFirstButtonReturn { LoginItem.openSystemSettings() }
     }
 
     // MARK: - 主流程
