@@ -11,6 +11,7 @@
 - **离线**：走系统 Vision 框架，不联网、不上传、无 API 费用
 - **无依赖**：框选复用系统 `screencapture -i`，不自绘覆盖层
 - **常驻菜单栏**：不占 Dock
+- **可开机启动**：设置里开关，状态与系统「登录项」同源，不会各存一份
 
 ## 下载
 
@@ -44,6 +45,25 @@ xattr -dr com.apple.quarantine "/Applications/OCR Snip.app"
 git tag v0.3.0 && git push origin v0.3.0
 ```
 
+## 测试
+
+```bash
+./test.sh
+```
+
+不需要 GUI 会话、不联网、**不改动系统设置**（不会真的注册登录项）。57 条断言，分四组：
+
+| 分组 | 覆盖内容 |
+|---|---|
+| `TextCleanup` | 该保留换行 / 该合并的各类输入；含两个已知取舍的 characterization 断言，行为一变就失败，提醒改动者是有意改进还是误伤 |
+| `HotKeyConfig` | 合法性判定、显示名与修饰键顺序、Carbon 掩码转换、UserDefaults 往返 |
+| `ShortcutRecorderView` | 录制状态机：进出录制态、⌘ 组合的截获、`Esc` 取消、收尾幂等 |
+| `SettingsWindow` | 捕获后方框是否已显示新组合（「快捷键改不了」的回归点）、失败回滚、关窗收尾 |
+
+后两组靠**离屏渲染**做：录制控件是 `NSView`，可以直接合成鼠标/键盘事件驱动，再把控件渲染成位图与参照控件逐字节比对。这类视图状态缺陷以前只能手点复现。参照控件必须挂进同一个窗口再渲染——`bitmapImageRepForCachingDisplay` 按视图的 backing scale 出图，游离的视图在 Retina 上会拿到 1x，比出来的像素数都不一样。
+
+**未覆盖**：真实的登录项注册（会改动系统设置，只能手动验证），以及深色模式下的外观。
+
 ## 使用
 
 按 **⌃⇧T**（默认，可在设置里改）→ 框选 → 结果窗弹出。
@@ -56,13 +76,27 @@ git tag v0.3.0 && git push origin v0.3.0
 
 ## 设置
 
-菜单栏图标 → **设置…**（或 `⌘,`）。目前只有快捷键这一项。
+菜单栏图标 → **设置…**（或 `⌘,`）。两项：全局快捷键、开机启动。
+
+### 快捷键
 
 点一下方框，按下想用的组合，立即生效并记住。三条规则：
 
 - **必须包含 `⌃` `⌥` `⌘` 中至少一个**。只有 `⇧` 或纯字母会把正常打字也一起拦下来，会被拒绝（响一声）
 - 录制中按 `Esc` 取消
 - 组合被别的 App 占用时会提示，并**自动退回原来那个** —— 不会让你落到没有快捷键可用的状态
+
+### 开机启动
+
+勾上「登录时自动启动」即登记为系统登录项。这里刻意**不在本地另存一份开关状态**，
+显示的就是「系统设置 → 通用 → 登录项」里的真实条目，两边改哪边都同步。
+
+两点注意：
+
+- **先放进「应用程序」再勾选。** 登记的是 App 当前所在路径；在 `build/` 里勾选的话，
+  日后清掉构建目录，开机启动就跟着失效了。
+- 若勾选后弹窗提示**还需要在系统设置里批准**（以前在系统设置里禁用过这个 App 就会这样），
+  点窗口里的「打开登录项设置」去批准一次。只登记不批准不会真正开机启动。
 
 ## 首次运行
 
@@ -95,6 +129,7 @@ git tag v0.3.0 && git push origin v0.3.0
 | 默认快捷键 | `Sources/HotKeyConfig.swift` 的 `fallback` |
 | 识别语言 | `Sources/TextRecognizer.swift` 的 `defaultLanguages` |
 | 应用图标 | `Icon/icon.svg`，`./build.sh` 检测到改动会自动重新生成 icns |
+| 版本号 | `Resources/Info.plist` 的 `CFBundleShortVersionString`。**手工维护、与 git tag 无关联**，打 tag 发版前记得一起改，否则发出去的版本号会对不上 |
 
 ## 结构
 
@@ -105,11 +140,22 @@ Sources/
 ├── HotKey.swift               Carbon 全局热键（不需要辅助功能权限）
 ├── HotKeyConfig.swift         快捷键模型 + UserDefaults 持久化
 ├── ShortcutRecorderView.swift 快捷键录制控件
-├── SettingsWindow.swift       设置窗口
+├── SettingsWindow.swift       设置窗口（快捷键 + 开机启动）
+├── LoginItem.swift            开机启动，封装 SMAppService
 ├── ScreenCapture.swift        调用 screencapture -i
 ├── TextRecognizer.swift       Vision OCR
 ├── TextCleanup.swift          段落合并
 └── ResultWindow.swift         确认窗
+
+Tests/                         单元测试，不进 App 产物
+├── main.swift                 极简断言框架 + 运行器
+├── TestTextCleanup.swift
+├── TestHotKeyConfig.swift
+├── TestShortcutRecorder.swift
+└── TestSettingsWindow.swift
+
+build.sh                       构建 App
+test.sh                        跑测试（./test.sh）
 
 Icon/
 ├── icon.svg                   图标源文件，改这个
